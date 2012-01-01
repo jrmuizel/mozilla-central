@@ -81,6 +81,14 @@ def parseManifest(manifest, dirs):
       testURLs = [items[1]]
     elif items[0] == "==" or items[0] == "!=":
       testURLs = items[1:3]
+
+    # make sure we properly parsed the line
+    try:
+        testURLs
+    except UnboundLocalError:
+        print >> sys.stderr, manifest + ": error: Couldn't parse the following line:\n  " +  line
+        exit(1)
+
     for u in testURLs:
       m = protocolRE.match(u)
       if m:
