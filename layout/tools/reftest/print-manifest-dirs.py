@@ -36,7 +36,7 @@
 #
 # ***** END LICENSE BLOCK *****
 
-import sys, os.path, re
+import sys, os.path, re, urlparse
 
 commentRE = re.compile(r"\s+#")
 conditionsRE = re.compile(r"^(fails|needs-focus|random|skip|asserts|fuzzy)")
@@ -62,10 +62,14 @@ def parseManifest(manifest, dirs):
     items = line.split()
     while conditionsRE.match(items[0]):
       del items[0]
+
+    pathsAreURLs = False
     if items[0] == "HTTP":
+      pathsAreURLs = True
       del items[0]
     m = httpRE.match(items[0])
     if m:
+      pathsAreURLs = True
       # need to package the dir referenced here
       d = os.path.normpath(os.path.join(manifestdir, m.group(1)))
       dirs.add(d)
@@ -94,6 +98,10 @@ def parseManifest(manifest, dirs):
       if m:
         # can't very well package about: or data: URIs
         continue
+      if pathsAreURLs:
+        # we want to ignore anything after the path component of the url otherwise
+        # we can confuse dirname with urls like: a.html?foo=a/b
+        u = urlparse.urlparse(u).path
       d = os.path.dirname(os.path.normpath(os.path.join(manifestdir, urlprefix + u)))
       dirs.add(d)
   f.close()
