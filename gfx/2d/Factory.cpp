@@ -54,7 +54,6 @@
 #include "ScaledFontMac.h"
 #endif
 
-
 #ifdef XP_MACOSX
 #include "DrawTargetCG.h"
 #endif
