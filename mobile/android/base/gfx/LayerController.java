@@ -49,6 +49,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.PointF;
 import android.graphics.RectF;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.View.OnTouchListener;
@@ -81,6 +82,8 @@ public class LayerController {
      *    that because mViewportMetrics might get reassigned in between reading the different
      *    fields. */
     private volatile ImmutableViewportMetrics mViewportMetrics;   /* The current viewport metrics. */
+    private volatile ImmutableViewportMetrics mLastViewportMetrics;   /* The last viewport metrics. */
+    private volatile DisplayPortMetrics mLastDisplayPortMetrics;   /* The last viewport metrics. */
 
     /*
      * The panning and zooming controller, which interprets pan and zoom gestures for us and
@@ -97,6 +100,7 @@ public class LayerController {
     private boolean mForceRedraw;
 
     private static Pattern sColorPattern;
+    private long lastTime;
 
     public LayerController(Context context) {
         mContext = context;
@@ -123,6 +127,11 @@ public class LayerController {
     public LayerView getView()                    { return mView; }
     public Context getContext()                   { return mContext; }
     public ImmutableViewportMetrics getViewportMetrics()   { return mViewportMetrics; }
+    public ImmutableViewportMetrics getLastViewportMetrics()   { return mLastViewportMetrics; }
+    public DisplayPortMetrics getLastDisplayPortMetrics()   { return mLastDisplayPortMetrics; }
+    public void setLastViewportMetrics()   { mLastViewportMetrics = mViewportMetrics; }
+    public long getLastTime() { return lastTime; }
+    public void setLastDisplayPortMetrics(DisplayPortMetrics d)   { mLastDisplayPortMetrics = d;lastTime = SystemClock.uptimeMillis(); }
 
     public RectF getViewport() {
         return mViewportMetrics.getViewport();

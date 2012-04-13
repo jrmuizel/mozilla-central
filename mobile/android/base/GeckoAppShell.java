@@ -212,6 +212,7 @@ public class GeckoAppShell
 
     public static native ByteBuffer allocateDirectBuffer(long size);
     public static native void freeDirectBuffer(ByteBuffer buf);
+    public static native void eventLag();
     public static native void scheduleComposite();
     public static native void schedulePauseComposition();
     public static native void scheduleResumeComposition(int width, int height);

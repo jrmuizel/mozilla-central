@@ -78,7 +78,7 @@ import java.util.ArrayList;
 public class LayerRenderer implements GLSurfaceView.Renderer {
     private static final String LOGTAG = "GeckoLayerRenderer";
     private static final String PROFTAG = "GeckoLayerRendererProf";
-
+    private static final int bufferSize = 7;
     /*
      * The amount of time a frame is allowed to take to render before we declare it a dropped
      * frame.
@@ -101,6 +101,8 @@ public class LayerRenderer implements GLSurfaceView.Renderer {
     private RenderContext mLastPageContext;
     private int mMaxTextureSize;
 
+    private static int checkCount;
+
     private ArrayList<Layer> mExtraLayers = new ArrayList<Layer>();
 
     // Dropped frames display
@@ -122,6 +124,18 @@ public class LayerRenderer implements GLSurfaceView.Renderer {
     private int mTextureHandle;
     private int mSampleHandle;
     private int mTMatrixHandle;
+
+    private class M {
+       public ImmutableViewportMetrics lastVM;
+       public RectF bounds;
+       public RectF viewport;
+       public RectF displayport;
+       public long lastTime;
+       public long time;
+    }
+
+    private static M[] history;
+    private static int histIndx;
 
     // column-major matrix applied to each vertex to shift the viewport from
     // one ranging from (-1, -1),(1,1) to (0,0),(1,1) and to scale all sizes by
@@ -160,6 +174,7 @@ public class LayerRenderer implements GLSurfaceView.Renderer {
 
     public LayerRenderer(LayerView view) {
         mView = view;
+        history = new M[bufferSize];
 
         LayerController controller = view.getController();
 
@@ -585,6 +600,11 @@ public class LayerRenderer implements GLSurfaceView.Renderer {
 
         /** This function is invoked via JNI; be careful when modifying signature. */
         public void drawForeground() {
+            LayerController controller = mView.getController();
+            ImmutableViewportMetrics lastVM = controller.getLastViewportMetrics();
+            RectF lastD = controller.getLastDisplayPortMetrics().getRect();
+            long lastTime = controller.getLastTime();
+
             /* Draw any extra layers that were added (likely plugins) */
             if (mExtraLayers.size() > 0) {
                 // This is a hack. SurfaceTextureLayer draws with its own program, so disable ours here
@@ -608,10 +628,19 @@ public class LayerRenderer implements GLSurfaceView.Renderer {
 
             /* Measure how much of the screen is checkerboarding */
             Layer rootLayer = mView.getController().getRoot();
-            if ((rootLayer != null) &&
-                (mProfileRender || PanningPerfAPI.isRecordingCheckerboard())) {
+            M last = new M();
+            last.bounds = (rootLayer.getBounds(mPageContext));
+            last.viewport = new RectF(mPageContext.viewport);
+            last.lastVM = lastVM;
+            last.displayport = lastD;
+            last.time = SystemClock.uptimeMillis();
+            last.lastTime = lastTime;
+            history[histIndx++ % bufferSize] = last;
+            if ((rootLayer != null) && true) {
+                //(mProfileRender || PanningPerfAPI.isRecordingCheckerboard())) {
                 // Find out how much of the viewport area is valid
                 Rect viewport = RectUtils.round(mPageContext.viewport);
+                RectF rootBounds = (rootLayer.getBounds(mPageContext));
                 Region validRegion = rootLayer.getValidRegion(mPageContext);
 
                 /* restrict the viewport to page bounds so we don't
@@ -623,9 +652,33 @@ public class LayerRenderer implements GLSurfaceView.Renderer {
                     viewport.setEmpty();
                 }
                 validRegion.op(viewport, Region.Op.INTERSECT);
-
+                if (checkCount > 0) {
+                        Log.e(PROFTAG, "Postcheckerboard! " + 
+                                "\nviewport(" + 
+                                mPageContext.viewport.top + "," +
+                                mPageContext.viewport.left + "x" +
+                                mPageContext.viewport.width() + "," +
+                                mPageContext.viewport.height() + ")" + 
+                                "\n  bounds(" +
+                                rootBounds.top + "," +
+                                rootBounds.left + "x" +
+                                rootBounds.width() + "," +
+                                rootBounds.height() + ")" +
+                                "\n  display(" +
+                                lastD.top + "," +
+                                lastD.left + "x" +
+                                lastD.width() + "," +
+                                lastD.height() + ")" +
+                                "\nlastview(" +
+                                lastVM.viewportRectTop + "," +
+                                lastVM.viewportRectLeft + "x" +
+                                lastVM.viewportRectRight + "," +
+                                lastVM.viewportRectBottom + ")");
+                        checkCount -= 1;
+                }
                 float checkerboard = 0.0f;
                 if (!(validRegion.isRect() && validRegion.getBounds().equals(viewport))) {
+
                     int screenArea = viewport.width() * viewport.height();
                     validRegion.op(viewport, Region.Op.REVERSE_DIFFERENCE);
 
@@ -640,9 +693,64 @@ public class LayerRenderer implements GLSurfaceView.Renderer {
                         checkerboardArea += r.width() * r.height();
                     }
 
-                    checkerboard = checkerboardArea / (float)screenArea;
+                    if (checkerboardArea > rootBounds.width()*2 ||
+                                    checkerboardArea > rootBounds.height()*2) {
+                            if (checkCount == 0) {
+                                    GeckoAppShell.eventLag();
+                                    for (int i=0; i<bufferSize; i++) {
+                                            M cur = history[(histIndx + i) % bufferSize];
+                                            Log.e(PROFTAG, "PreCheckerboard! " + " t: " + cur.time + " lt: " + cur.lastTime + 
+                                                            "\nviewport(" + 
+                                                            cur.viewport.top + "," +
+                                                            cur.viewport.left + "x" +
+                                                            cur.viewport.width() + "," +
+                                                            cur.viewport.height() + ")" + 
+                                                            "\n  bounds(" +
+                                                            cur.bounds.top + "," +
+                                                            cur.bounds.left + "x" +
+                                                            cur.bounds.width() + "," +
+                                                            cur.bounds.height() + ")"+
+                                                            "\n  display(" +
+                                                            cur.displayport.top + "," +
+                                                            cur.displayport.left + "x" +
+                                                            cur.displayport.width() + "," +
+                                                            cur.displayport.height() + ")" +
+                                                            "\nlastview(" +
+                                                            cur.lastVM.viewportRectTop + "," +
+                                                            cur.lastVM.viewportRectLeft + "x" +
+                                                            cur.lastVM.viewportRectRight + "," +
+                                                            cur.lastVM.viewportRectBottom + ")");
+
+                            }
+                            }
+                            //checkerboard = checkerboardArea / (float)screenArea;
+                            Log.e(PROFTAG, "Checkerboard! " + checkerboardArea + 
+                                            " t:" + SystemClock.uptimeMillis() +
+                                            "\nviewport(" + 
+                                            mPageContext.viewport.top + "," +
+                                            mPageContext.viewport.left + "x" +
+                                            mPageContext.viewport.width() + "," +
+                                            mPageContext.viewport.height() + ")" + 
+                                            "\n  bounds(" +
+                                            rootBounds.top + "," +
+                                            rootBounds.left + "x" +
+                                            rootBounds.width() + "," +
+                                            rootBounds.height() + ")"+
+                                            "\n  display(" +
+                                            lastD.top + "," +
+                                            lastD.left + "x" +
+                                            lastD.width() + "," +
+                                            lastD.height() + ")" +
+                                            "\nlastview(" +
+                                            lastVM.viewportRectTop + "," +
+                                            lastVM.viewportRectLeft + "x" +
+                                            lastVM.viewportRectRight + "," +
+                                            lastVM.viewportRectBottom + ")");
+                            checkCount = 5;
+                    }
                 }
 
+                /*
                 PanningPerfAPI.recordCheckerboard(checkerboard);
 
                 mCompleteFramesRendered += 1.0f - checkerboard;
@@ -651,7 +759,7 @@ public class LayerRenderer implements GLSurfaceView.Renderer {
                 if (mFrameStartTime - mProfileOutputTime > 1000) {
                     mProfileOutputTime = mFrameStartTime;
                     printCheckerboardStats();
-                }
+                }*/
             }
 
             /* Draw the FPS. */

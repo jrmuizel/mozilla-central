@@ -82,6 +82,10 @@ using mozilla::unused;
 #include "imgIEncoder.h"
 
 #include "nsStringGlue.h"
+#include "nsAutoPtr.h"
+#include "sampler.h"
+
+static bool disableInvalidate;
 
 using namespace mozilla;
 using namespace mozilla::widget;
@@ -779,6 +783,7 @@ nsWindow::GetLayerManager(PLayersChild*, LayersBackend, LayerManagerPersistence,
 void
 nsWindow::OnGlobalAndroidEvent(AndroidGeckoEvent *ae)
 {
+    SAMPLE_LABEL("nsWindow", "OnGlobalAndroidEvent");
     if (!AndroidBridge::Bridge())
         return;
 

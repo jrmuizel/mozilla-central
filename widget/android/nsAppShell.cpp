@@ -533,6 +533,46 @@ nsAppShell::PeekNextEvent()
     return ae;
 }
 
+static int lastDraw;
+static int lastViewport;
+static int lasterDraw;
+static int lasterViewport;
+void eventLag() {
+    printf_stderr("eventLag: draw:%d,%d viewport:%d,%d", lastDraw,lasterDraw, lastViewport,lasterViewport);
+}
+
+#include <time.h>
+
+static const PRUint16 kNsPerUs   =       1000;
+static const PRUint64 kNsPerMs   =    1000000;
+static const PRUint64 kNsPerSec  = 1000000000; 
+static const double kNsPerMsd    =    1000000.0;
+static const double kNsPerSecd   = 1000000000.0;
+
+static PRUint64
+TimespecToNs(const struct timespec& ts)
+{
+  PRUint64 baseNs = PRUint64(ts.tv_sec) * kNsPerSec;
+  return baseNs + PRUint64(ts.tv_nsec);
+}
+
+
+// We don't use TimeStamp because it requires making a TimeDuration before
+// we can get at it's value
+static int timestamp()
+{
+  struct timespec ts;
+  // this can't fail: we know &ts is valid, and TimeStamp::Init()
+  // checks that CLOCK_MONOTONIC is supported (and aborts if not)
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return TimespecToNs(ts)/10000;
+
+  /*
+  return (int)PR_IntervalNow();
+  */
+}
+
+
 void
 nsAppShell::PostEvent(AndroidGeckoEvent *ae)
 {
@@ -576,6 +616,8 @@ nsAppShell::PostEvent(AndroidGeckoEvent *ae)
             break;
 
         case AndroidGeckoEvent::DRAW:
+            lasterDraw = lastDraw;
+            lastDraw = timestamp();
             if (mQueuedDrawEvent) {
                 // coalesce this new draw event with the one already in the queue
                 const nsIntRect& oldRect = mQueuedDrawEvent->Rect();
@@ -618,6 +660,8 @@ nsAppShell::PostEvent(AndroidGeckoEvent *ae)
             break;
 
         case AndroidGeckoEvent::VIEWPORT:
+            lasterViewport = lastViewport;
+            lastViewport = timestamp();
             if (mQueuedViewportEvent) {
                 // drop the previous viewport event now that we have a new one
                 EVLOG("nsAppShell: Dropping old viewport event at %p in favour of new VIEWPORT event %p", mQueuedViewportEvent, ae);

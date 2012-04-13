@@ -334,6 +334,7 @@ SHELL_WRAPPER1(cameraCallbackBridge, jbyteArray)
 SHELL_WRAPPER3(notifyBatteryChange, jdouble, jboolean, jdouble)
 SHELL_WRAPPER3(notifySmsReceived, jstring, jstring, jlong)
 SHELL_WRAPPER0(bindWidgetTexture)
+SHELL_WRAPPER0(eventLag)
 SHELL_WRAPPER0(scheduleComposite)
 SHELL_WRAPPER0(schedulePauseComposition)
 SHELL_WRAPPER2(scheduleResumeComposition, jint, jint)
@@ -750,6 +751,7 @@ loadGeckoLibs(const char *apkName)
   GETFUNC(notifyBatteryChange);
   GETFUNC(notifySmsReceived);
   GETFUNC(bindWidgetTexture);
+  GETFUNC(eventLag);
   GETFUNC(scheduleComposite);
   GETFUNC(schedulePauseComposition);
   GETFUNC(scheduleResumeComposition);

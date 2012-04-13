@@ -106,6 +106,7 @@ extern "C" {
 
 #ifdef MOZ_JAVA_COMPOSITOR
     NS_EXPORT void JNICALL Java_org_mozilla_gecko_GeckoAppShell_scheduleComposite(JNIEnv* jenv, jclass);
+    NS_EXPORT void JNICALL Java_org_mozilla_gecko_GeckoAppShell_eventLag(JNIEnv* jenv, jclass);
     NS_EXPORT void JNICALL Java_org_mozilla_gecko_GeckoAppShell_schedulePauseComposition(JNIEnv* jenv, jclass);
     NS_EXPORT void JNICALL Java_org_mozilla_gecko_GeckoAppShell_scheduleResumeComposition(JNIEnv* jenv, jclass, jint, jint);
 #endif
@@ -891,6 +892,15 @@ Java_org_mozilla_gecko_GeckoAppShell_notifyReadingMessageListFailed(JNIEnv* jenv
 }
 
 #ifdef MOZ_JAVA_COMPOSITOR
+
+void eventLag();
+
+NS_EXPORT void JNICALL
+Java_org_mozilla_gecko_GeckoAppShell_eventLag(JNIEnv*, jclass)
+{
+    eventLag();
+}
+
 
 NS_EXPORT void JNICALL
 Java_org_mozilla_gecko_GeckoAppShell_scheduleComposite(JNIEnv*, jclass)
