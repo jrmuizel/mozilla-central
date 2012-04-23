@@ -239,6 +239,15 @@ ShadowLayerForwarder::PaintedThebesBuffer(ShadowableLayer* aThebes,
                                                   aBufferRotation),
                                      aUpdatedRegion));
 }
+
+void
+ShadowLayerForwarder::PaintedTiledLayerBuffer(ShadowableLayer* aLayer,
+                                              BasicTiledLayerBuffer* aTiledLayerBuffer)
+{
+  mTxn->AddPaint(OpPaintTiledLayerBuffer(NULL, Shadow(aLayer),
+                                         uintptr_t(aTiledLayerBuffer)));
+}
+
 void
 ShadowLayerForwarder::PaintedImage(ShadowableLayer* aImage,
                                    const SharedImage& aNewFrontImage)

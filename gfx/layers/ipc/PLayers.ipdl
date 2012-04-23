@@ -162,6 +162,11 @@ struct OpPaintThebesBuffer {
   nsIntRegion updatedRegion;
 };
 
+struct OpPaintTiledLayerBuffer {
+  PLayer layer;
+  uintptr_t tiledLayerBuffer;
+};
+
 struct OpPaintCanvas  {
   PLayer layer;
   CanvasSurface newFrontBuffer;
@@ -190,6 +195,7 @@ union Edit {
   OpRemoveChild;
 
   OpPaintThebesBuffer;
+  OpPaintTiledLayerBuffer;
   OpPaintCanvas;
   OpPaintImage;
 };
