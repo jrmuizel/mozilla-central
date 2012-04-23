@@ -9,7 +9,7 @@
 
 // Debug defines
 #define FORCE_BASICTILEDTHEBESLAYER
-#define GFX_TILEDLAYER_DEBUG_OVERLAY
+//#define GFX_TILEDLAYER_DEBUG_OVERLAY
 //#define GFX_TILEDLAYER_PREF_WARNINGS
 
 #include "nsRect.h"
