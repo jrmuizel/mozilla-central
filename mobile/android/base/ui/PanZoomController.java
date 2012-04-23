@@ -52,6 +52,7 @@ import org.mozilla.gecko.GeckoEvent;
 import org.mozilla.gecko.GeckoEventListener;
 import android.graphics.PointF;
 import android.graphics.RectF;
+import android.os.SystemClock;
 import android.util.FloatMath;
 import android.util.Log;
 import android.view.GestureDetector;
@@ -318,6 +319,8 @@ public class PanZoomController
      */
 
     private boolean onTouchStart(MotionEvent event) {
+        Log.d("CheckViz", SystemClock.uptimeMillis() + " down");
+
         // user is taking control of movement, so stop
         // any auto-movement we have going
         stopAnimationTimer();
@@ -399,6 +402,7 @@ public class PanZoomController
     }
 
     private boolean onTouchEnd(MotionEvent event) {
+        Log.d("CheckViz", SystemClock.uptimeMillis() + " up");
 
         switch (mState) {
         case FLING:
