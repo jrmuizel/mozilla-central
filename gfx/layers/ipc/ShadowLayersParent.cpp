@@ -325,7 +325,7 @@ ShadowLayersParent::RecvUpdate(const InfallibleTArray<Edit>& cset,
 
       if (XRE_GetProcessType() != GeckoProcessType_Default)
         NS_RUNTIMEABORT("OpPaintTiledLayerBuffer must be made IPC safe (not share pointers)");
-      NS_ASSERTION(tileCompoler, "shadowLayer is not a tile composer");
+      NS_ASSERTION(tileComposer, "shadowLayer is not a tile composer");
 
       BasicTiledLayerBuffer* p = (BasicTiledLayerBuffer*)op.tiledLayerBuffer();
       tileComposer->PaintedTiledLayerBuffer(p);
