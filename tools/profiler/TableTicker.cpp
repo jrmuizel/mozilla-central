@@ -143,6 +143,12 @@ public:
     , mTagName(aTagName)
   { }
 
+  ProfileEntry(char aTagName, int aTagInt)
+    : mTagInt(aTagInt)
+    , mTagName(aTagName)
+  { }
+
+
   friend std::ostream& operator<<(std::ostream& stream, const ProfileEntry& entry);
 
 private:
@@ -152,6 +158,7 @@ private:
     double mTagFloat;
     Address mTagAddress;
     uintptr_t mTagOffset;
+    int mTagInt;
   };
   char mTagName;
 };
@@ -603,6 +610,38 @@ unsigned int sCurrentEventGeneration = 0;
  * a problem if 2^32 events happen between samples that we need
  * to know are associated with different events */
 
+#include <time.h>
+
+static const PRUint16 kNsPerUs   =       1000;
+static const PRUint64 kNsPerMs   =    1000000;
+static const PRUint64 kNsPerSec  = 1000000000; 
+static const double kNsPerMsd    =    1000000.0;
+static const double kNsPerSecd   = 1000000000.0;
+
+static PRUint64
+TimespecToNs(const struct timespec& ts)
+{
+  PRUint64 baseNs = PRUint64(ts.tv_sec) * kNsPerSec;
+  return baseNs + PRUint64(ts.tv_nsec);
+}
+
+
+
+// We don't use TimeStamp because it requires making a TimeDuration before
+// we can get at it's value
+static int timestamp()
+{
+  struct timespec ts;
+  // this can't fail: we know &ts is valid, and TimeStamp::Init()
+  // checks that CLOCK_MONOTONIC is supported (and aborts if not)
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return TimespecToNs(ts)/10000;
+
+  /*
+  return (int)PR_IntervalNow();
+  */
+}
+
 void TableTicker::Tick(TickSample* sample)
 {
   // Marker(s) come before the sample
@@ -647,6 +686,8 @@ void TableTicker::Tick(TickSample* sample)
   if (recordSample)
     mPrimaryThreadProfile.flush();
 
+  mPrimaryThreadProfile.addTag(ProfileEntry('t', timestamp()));
+
   if (!mJankOnly && !sLastTracerEvent.IsNull() && sample) {
     TimeDuration delta = sample->timestamp - sLastTracerEvent;
     mPrimaryThreadProfile.addTag(ProfileEntry('r', delta.ToMilliseconds()));
@@ -673,6 +714,10 @@ std::ostream& operator<<(std::ostream& stream, const ProfileEntry& entry)
     char tagBuff[1024];
     unsigned long long pc = (unsigned long long)entry.mTagData;
     snprintf(tagBuff, 1024, "l-%#llx\n", pc);
+    stream << tagBuff;
+  } else if (entry.mTagName == 't') {
+    char tagBuff[1024];
+    snprintf(tagBuff, 1024, "t-%ld\n", entry.mTagInt);
     stream << tagBuff;
   } else {
     stream << entry.mTagName << "-" << entry.mTagData << "\n";
