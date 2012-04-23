@@ -82,6 +82,9 @@ final class DisplayPortCalculator {
             case 3:
                 sStrategy = new NoMarginStrategy(prefs);
                 break;
+            case 4:
+                sStrategy = new PredictionBiasStrategy(prefs);
+                break;
             default:
                 Log.e(LOGTAG, "Invalid strategy index specified");
                 return false;
@@ -190,6 +193,14 @@ final class DisplayPortCalculator {
             margins.top += bottomOverflow;
         }
         return margins;
+    }
+
+    private static RectF clampToPageBounds(RectF rect, ImmutableViewportMetrics metrics) {
+        rect.left = Math.max(rect.left, 0);
+        rect.top = Math.max(rect.top, 0);
+        rect.right = Math.min(rect.right, metrics.pageSizeWidth);
+        rect.bottom = Math.min(rect.bottom, metrics.pageSizeHeight);
+        return rect;
     }
 
     /**
@@ -605,6 +616,73 @@ final class DisplayPortCalculator {
         @Override
         public String toString() {
             return "DynamicResolutionStrategy";
+        }
+    }
+
+    private static class PredictionBiasStrategy implements DisplayPortStrategy {
+        private static final float VELOCITY_THRESHOLD = 5.0f;
+
+        private int mPixelArea;
+        private int mMinFramesToDraw;
+        private int mMaxFramesToDraw;
+
+        PredictionBiasStrategy(Map<String, Integer> prefs) {
+            mMinFramesToDraw = 1;
+            mMaxFramesToDraw = 1;
+        }
+
+        public DisplayPortMetrics calculate(ImmutableViewportMetrics metrics, PointF velocity) {
+            float width = metrics.getWidth();
+            float height = metrics.getHeight();
+            mPixelArea = (int)(width * height);
+
+            if (velocity.length() < VELOCITY_THRESHOLD) {
+                RectF margins = new RectF(width, height, width, height);
+                return expandMarginsToFillTiles(margins, metrics.zoomFactor, metrics);
+            }
+
+            float minDx = velocity.x * mMinFramesToDraw;
+            float minDy = velocity.y * mMinFramesToDraw;
+            float maxDx = velocity.x * mMaxFramesToDraw;
+            float maxDy = velocity.y * mMaxFramesToDraw;
+
+            float pixelsToDraw = (Math.abs(maxDx - minDx) * Math.abs(maxDy - minDy));
+            // bump up to account for us drawing a larger area
+            maxDx = maxDx * pixelsToDraw / mPixelArea;
+            maxDy = maxDy * pixelsToDraw / mPixelArea;
+
+            RectF margins = new RectF(
+                -Math.min(minDx, maxDx),
+                -Math.min(minDy, maxDy),
+                Math.max(minDx, maxDx),
+                Math.max(minDy, maxDy));
+            return expandMarginsToFillTiles(margins, metrics.zoomFactor, metrics);
+        }
+
+        public boolean aboutToCheckerboard(ImmutableViewportMetrics metrics, PointF velocity, DisplayPortMetrics displayPort) {
+            float minDx = velocity.x * mMinFramesToDraw;
+            float minDy = velocity.y * mMinFramesToDraw;
+            float maxDx = velocity.x * mMaxFramesToDraw;
+            float maxDy = velocity.y * mMaxFramesToDraw;
+
+            float pixelsToDraw = (Math.abs(maxDx - minDx) * Math.abs(maxDy - minDy));
+            // bump up to account for us drawing a larger area
+            maxDx = maxDx * pixelsToDraw / mPixelArea;
+            maxDy = maxDy * pixelsToDraw / mPixelArea;
+
+            RectF predictedViewport = metrics.getViewport();
+            predictedViewport.left += maxDx;
+            predictedViewport.top += maxDy;
+            predictedViewport.right += maxDx;
+            predictedViewport.bottom += maxDy;
+
+            predictedViewport = clampToPageBounds(predictedViewport, metrics);
+            return !displayPort.contains(predictedViewport);
+        }
+
+        @Override
+        public String toString() {
+            return "PredictionBiasStrategy";
         }
     }
 }

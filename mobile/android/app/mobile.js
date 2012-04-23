@@ -365,7 +365,7 @@ pref("places.frecency.unvisitedTypedBonus", 200);
 pref("gfx.color_management.mode", 0);
 
 #ifdef ANDROID
-// 0=fixed margin, 1=velocity bias, 2=dynamic resolution, 3=no margins
+// 0=fixed margin, 1=velocity bias, 2=dynamic resolution, 3=no margins, 4=prediction bias
 pref("gfx.displayport.strategy", 1);
 // all of the following displayport strategy prefs will be divided by 1000
 // to obtain some multiplier which is then used in the strategy.
