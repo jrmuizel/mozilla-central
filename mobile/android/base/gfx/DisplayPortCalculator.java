@@ -44,6 +44,14 @@ final class DisplayPortCalculator {
         return sStrategy.aboutToCheckerboard(metrics, (velocity == null ? ZERO_VELOCITY : velocity), displayPort);
     }
 
+    static void drawTimeUpdate(long millis, int pixels) {
+        sStrategy.drawTimeUpdate(millis, pixels);
+    }
+
+    static void resetPageState() {
+        sStrategy.resetPageState();
+    }
+
     static void addPrefNames(JSONArray prefs) {
         prefs.put(PREF_DISPLAYPORT_STRATEGY);
         prefs.put(PREF_DISPLAYPORT_FM_MULTIPLIER);
@@ -98,11 +106,15 @@ final class DisplayPortCalculator {
         return (float)(value == null || value < 0 ? defaultValue : value) / 1000f;
     }
 
-    private interface DisplayPortStrategy {
+    private static abstract class DisplayPortStrategy {
         /** Calculates a displayport given a viewport and panning velocity. */
-        public DisplayPortMetrics calculate(ImmutableViewportMetrics metrics, PointF velocity);
+        public abstract DisplayPortMetrics calculate(ImmutableViewportMetrics metrics, PointF velocity);
         /** Returns true if a checkerboard is about to be visible and we should not throttle drawing. */
-        public boolean aboutToCheckerboard(ImmutableViewportMetrics metrics, PointF velocity, DisplayPortMetrics displayPort);
+        public abstract boolean aboutToCheckerboard(ImmutableViewportMetrics metrics, PointF velocity, DisplayPortMetrics displayPort);
+        /** Notify the strategy of a new recorded draw time. */
+        public void drawTimeUpdate(long millis, int pixels) {}
+        /** Reset any page-specific state stored, as the page being displayed has changed. */
+        public void resetPageState() {}
     }
 
     /**
@@ -206,7 +218,7 @@ final class DisplayPortCalculator {
     /**
      * This class implements the variation where we basically don't bother with a a display port.
      */
-    private static class NoMarginStrategy implements DisplayPortStrategy {
+    private static class NoMarginStrategy extends DisplayPortStrategy {
         NoMarginStrategy(Map<String, Integer> prefs) {
             // no prefs in this strategy
         }
@@ -237,7 +249,7 @@ final class DisplayPortCalculator {
      * and/or (b) increasing the buffer on the other axis to compensate for the reduced buffer on
      * one axis.
      */
-    private static class FixedMarginStrategy implements DisplayPortStrategy {
+    private static class FixedMarginStrategy extends DisplayPortStrategy {
         // The length of each axis of the display port will be the corresponding view length
         // multiplied by this factor.
         private final float SIZE_MULTIPLIER;
@@ -303,7 +315,7 @@ final class DisplayPortCalculator {
      * so that it is almost entirely in the direction of the pan, with a little bit in the
      * reverse direction.
      */
-    private static class VelocityBiasStrategy implements DisplayPortStrategy {
+    private static class VelocityBiasStrategy extends DisplayPortStrategy {
         // The length of each axis of the display port will be the corresponding view length
         // multiplied by this factor.
         private final float SIZE_MULTIPLIER;
@@ -429,7 +441,7 @@ final class DisplayPortCalculator {
      * looks blurry. The assumption is that drawing extra that we never display is better than checkerboarding,
      * where we draw less but never even show it on the screen.
      */
-    private static class DynamicResolutionStrategy implements DisplayPortStrategy {
+    private static class DynamicResolutionStrategy extends DisplayPortStrategy {
         // The length of each axis of the display port will be the corresponding view length
         // multiplied by this factor.
         private static final float SIZE_MULTIPLIER = 1.5f;
@@ -619,7 +631,7 @@ final class DisplayPortCalculator {
         }
     }
 
-    private static class PredictionBiasStrategy implements DisplayPortStrategy {
+    private static class PredictionBiasStrategy extends DisplayPortStrategy {
         private static final float VELOCITY_THRESHOLD = 5.0f;
 
         private int mPixelArea;
@@ -627,8 +639,7 @@ final class DisplayPortCalculator {
         private int mMaxFramesToDraw;
 
         PredictionBiasStrategy(Map<String, Integer> prefs) {
-            mMinFramesToDraw = 1;
-            mMaxFramesToDraw = 1;
+            resetPageState();
         }
 
         public DisplayPortMetrics calculate(ImmutableViewportMetrics metrics, PointF velocity) {
@@ -678,6 +689,26 @@ final class DisplayPortCalculator {
 
             predictedViewport = clampToPageBounds(predictedViewport, metrics);
             return !displayPort.contains(predictedViewport);
+        }
+
+        @Override
+        public void drawTimeUpdate(long millis, int pixels) {
+            float normalizedTime = (float)mPixelArea * (float)millis / (float)pixels;
+            int normalizedFrames = (int)FloatMath.ceil(normalizedTime * 60f / 1000f);
+            if (normalizedFrames <= mMinFramesToDraw) {
+                mMinFramesToDraw--;
+            } else if (normalizedFrames > mMaxFramesToDraw) {
+                mMaxFramesToDraw++;
+            } else {
+                return;
+            }
+            Log.d(LOGTAG, "Widened draw range to [" + mMinFramesToDraw + ", " + mMaxFramesToDraw + "]");
+        }
+
+        @Override
+        public void resetPageState() {
+            mMinFramesToDraw = 0;
+            mMaxFramesToDraw = 2;
         }
 
         @Override

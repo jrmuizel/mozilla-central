@@ -56,6 +56,8 @@ import android.os.SystemClock;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -71,6 +73,9 @@ public class GeckoLayerClient implements GeckoEventResponder,
     private IntSize mWindowSize;
     private DisplayPortMetrics mDisplayPort;
     private DisplayPortMetrics mReturnDisplayPort;
+
+    private List<DisplayPortMetrics> mRequestedDisplayPorts;
+    private List<Long> mDisplayPortRequestTimes;
 
     private VirtualLayer mRootLayer;
 
@@ -97,6 +102,8 @@ public class GeckoLayerClient implements GeckoEventResponder,
         mScreenSize = new IntSize(0, 0);
         mWindowSize = new IntSize(0, 0);
         mDisplayPort = new DisplayPortMetrics();
+        mRequestedDisplayPorts = new ArrayList<DisplayPortMetrics>();
+        mDisplayPortRequestTimes = new ArrayList<Long>();
         mCurrentViewTransform = new ViewTransform(0, 0, 1);
     }
 
@@ -190,6 +197,11 @@ public class GeckoLayerClient implements GeckoEventResponder,
 
         mDisplayPort = displayPort;
         mGeckoViewport = clampedMetrics;
+
+        synchronized (mRequestedDisplayPorts) {
+            mRequestedDisplayPorts.add(displayPort);
+            mDisplayPortRequestTimes.add(SystemClock.uptimeMillis());
+        }
 
         GeckoAppShell.sendEventToGecko(GeckoEvent.createViewportEvent(clampedMetrics, displayPort));
     }
@@ -339,6 +351,7 @@ public class GeckoLayerClient implements GeckoEventResponder,
             mLayerController.abortPanZoomAnimation();
             mLayerController.getView().setPaintState(LayerView.PAINT_BEFORE_FIRST);
         }
+        DisplayPortCalculator.resetPageState();
     }
 
     /** This function is invoked by Gecko via JNI; be careful when modifying signature.
@@ -387,6 +400,23 @@ public class GeckoLayerClient implements GeckoEventResponder,
         mCurrentViewTransform.scale = mFrameMetrics.zoomFactor;
 
         mRootLayer.setPositionAndResolution(x, y, x + width, y + height, resolution);
+
+        if (layersUpdated) {
+            long now = SystemClock.uptimeMillis();
+            DisplayPortMetrics drawn = new DisplayPortMetrics(x, y, x + width, y + height, resolution);
+            synchronized (mRequestedDisplayPorts) {
+                int size = mRequestedDisplayPorts.size();
+                for (int i = 0; i < size; i++) {
+                    if (mRequestedDisplayPorts.get(i).fuzzyEquals(drawn)) {
+                        long drawTime = now - mDisplayPortRequestTimes.get(i);
+                        DisplayPortCalculator.drawTimeUpdate(drawTime, width * height);
+                        mRequestedDisplayPorts = mRequestedDisplayPorts.subList(i + 1, size);
+                        mDisplayPortRequestTimes = mDisplayPortRequestTimes.subList(i + 1, size);
+                        break;
+                    }
+                }
+            }
+        }
 
         if (layersUpdated && mDrawListener != null) {
             /* Used by robocop for testing purposes */
