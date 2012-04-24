@@ -50,6 +50,7 @@
 #include "nsThreadUtils.h"
 #include "nsIWeakReference.h"
 #include "nsEnumeratorUtils.h"
+#include "sampler.h"
 
 #define NOTIFY_GLOBAL_OBSERVERS
 
@@ -174,6 +175,7 @@ NS_IMETHODIMP nsObserverService::NotifyObservers(nsISupports *aSubject,
 {
     LOG(("nsObserverService::NotifyObservers(%s)", aTopic));
 
+    SAMPLE_LABEL("nsObserverService","NotifyObservers");
     NS_ENSURE_VALIDCALL
     NS_ENSURE_ARG(aTopic);
 

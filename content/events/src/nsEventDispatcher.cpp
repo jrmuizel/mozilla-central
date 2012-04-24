@@ -301,6 +301,7 @@ nsEventTargetChainItem::HandleEventTargetChain(nsEventChainPostVisitor& aVisitor
                                                bool aMayHaveNewListenerManagers,
                                                nsCxPusher* aPusher)
 {
+  SAMPLE_LABEL("nsEventTargetChainItem", "HandleEvent");
   PRUint32 createdELMs = nsEventListenerManager::sCreatedCount;
   // Save the target so that it can be restored later.
   nsCOMPtr<nsIDOMEventTarget> firstTarget = aVisitor.mEvent->target;
