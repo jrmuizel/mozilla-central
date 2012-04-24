@@ -547,6 +547,8 @@ nsWindow::IsEnabled(bool *aState)
 NS_IMETHODIMP
 nsWindow::Invalidate(const nsIntRect &aRect)
 {
+    if (disableInvalidate)
+            return NS_OK;
     AndroidGeckoEvent *event = new AndroidGeckoEvent(AndroidGeckoEvent::DRAW, aRect);
     nsAppShell::gAppShell->PostEvent(event);
     return NS_OK;
@@ -897,6 +899,41 @@ nsWindow::OnGlobalAndroidEvent(AndroidGeckoEvent *ae)
             if (win->mFocus)
                 win->mFocus->OnKeyEvent(ae);
             break;
+
+        case AndroidGeckoEvent::VIEWPORT:
+        case AndroidGeckoEvent::BROADCAST: {
+            if (ae->Characters().Length() == 0)
+                break;
+
+            nsCOMPtr<nsIObserverService> obsServ =
+                mozilla::services::GetObserverService();
+
+            const NS_ConvertUTF16toUTF8 topic(ae->Characters());
+            const nsPromiseFlatString& data = PromiseFlatString(ae->CharactersExtra());
+
+            obsServ->NotifyObservers(nsnull, topic.get(), data.get());
+            if (ae->Type() == AndroidGeckoEvent::VIEWPORT) {
+                // We know that we've caused a complete invalidation
+                // and don't want to wait for the refresh driver
+                // to kick off a draw so we start one now.
+                // There are other smaller invalidations for touch hilighting that
+                // happen earlier so we don't necessarily want to have the
+                // refresh driver naively start a paint when we get the first
+                // invalidation.
+
+                // doing a paint will cause any invaliations to be flushed this will queue
+                // up an additional DRAW which we want to avoid. We do this
+                // by temporarily disabling invalidations.
+                disableInvalidate = true;
+
+                nsIntRect rect(0, 0, win->mBounds.width, win->mBounds.height);
+                nsAutoPtr<AndroidGeckoEvent> event(new AndroidGeckoEvent(AndroidGeckoEvent::DRAW, rect));
+                win->OnDraw(event);
+
+                disableInvalidate = false;
+            }
+            break;
+        }
 
         case AndroidGeckoEvent::DRAW:
             layers::renderTraceEventStart("Global draw start", "414141");
