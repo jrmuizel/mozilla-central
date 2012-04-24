@@ -902,6 +902,7 @@ nsWindow::OnGlobalAndroidEvent(AndroidGeckoEvent *ae)
 
         case AndroidGeckoEvent::VIEWPORT:
         case AndroidGeckoEvent::BROADCAST: {
+            SAMPLE_LABEL("nsWindow", "OnGlobalAndroidEvent::VIEWPORT/BROADCAST");
             if (ae->Characters().Length() == 0)
                 break;
 

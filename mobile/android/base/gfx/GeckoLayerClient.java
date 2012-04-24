@@ -192,6 +192,11 @@ public class GeckoLayerClient implements GeckoEventResponder,
                     mLayerController.getPanZoomController().getVelocityVector());
         }
 
+        if (mDisplayPort.fuzzyEquals(displayPort)) {
+          //Log.i("CheckViz", "equalDisplayPort");
+          return;
+        }
+
         mDisplayPort = displayPort;
         mGeckoViewport = clampedMetrics;
         mLayerController.setLastDisplayPortMetrics(displayPort);
