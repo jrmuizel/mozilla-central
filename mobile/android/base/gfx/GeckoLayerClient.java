@@ -203,7 +203,7 @@ public class GeckoLayerClient implements GeckoEventResponder,
 
         mDrawTimingQueue.add(displayPort);
 
-        Log.i("CheckViz", SystemClock.uptimeMillis() + " adjustViewport " + displayPort.toString());
+        //Log.i("CheckViz", SystemClock.uptimeMillis() + " adjustViewport " + displayPort.toString());
 
         GeckoAppShell.sendEventToGecko(GeckoEvent.createViewportEvent(clampedMetrics, displayPort));
     }
@@ -407,7 +407,7 @@ public class GeckoLayerClient implements GeckoEventResponder,
             DisplayPortMetrics drawn = new DisplayPortMetrics(x, y, x + width, y + height, resolution);
             long time = mDrawTimingQueue.findTimeFor(drawn);
             if (time >= 0) {
-                Log.i("CheckViz", SystemClock.uptimeMillis() + " drawtime " + time + " " + (width * height));
+                //Log.i("CheckViz", SystemClock.uptimeMillis() + " drawtime " + time + " " + (width * height));
                 DisplayPortCalculator.drawTimeUpdate(time, width * height);
             }
         }
@@ -416,13 +416,13 @@ public class GeckoLayerClient implements GeckoEventResponder,
             /* Used by robocop for testing purposes */
             mDrawListener.drawFinished();
         }
-
+/*
         Log.i("CheckViz", SystemClock.uptimeMillis() + " syncViewportInfo "
             + x + " " + y + " " + width + " " + height + " " + resolution + " "
             + mFrameMetrics.viewportRectLeft + " " + mFrameMetrics.viewportRectTop + " "
             + mFrameMetrics.getWidth() + " " + mFrameMetrics.getHeight() + " " + mFrameMetrics.zoomFactor + " "
             + mFrameMetrics.pageSizeWidth + " " + mFrameMetrics.pageSizeHeight);
-
+*/
         return mCurrentViewTransform;
     }
 

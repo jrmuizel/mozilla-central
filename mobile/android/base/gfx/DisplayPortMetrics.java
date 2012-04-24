@@ -38,6 +38,10 @@ public final class DisplayPortMetrics {
             && FloatUtils.fuzzyEquals(mResolution, metrics.mResolution);
     }
 
+    public RectF getRect() {
+        return mPosition;
+    }
+
     public String toJSON() {
         StringBuffer sb = new StringBuffer(256);
         sb.append("{ \"left\": ").append(mPosition.left)

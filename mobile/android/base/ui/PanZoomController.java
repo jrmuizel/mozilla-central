@@ -319,7 +319,8 @@ public class PanZoomController
      */
 
     private boolean onTouchStart(MotionEvent event) {
-        Log.d("CheckViz", SystemClock.uptimeMillis() + " down");
+        
+            //Log.d("CheckViz", SystemClock.uptimeMillis() + " down");
 
         // user is taking control of movement, so stop
         // any auto-movement we have going
@@ -402,7 +403,7 @@ public class PanZoomController
     }
 
     private boolean onTouchEnd(MotionEvent event) {
-        Log.d("CheckViz", SystemClock.uptimeMillis() + " up");
+        //Log.d("CheckViz", SystemClock.uptimeMillis() + " up");
 
         switch (mState) {
         case FLING:
